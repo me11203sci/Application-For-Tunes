@@ -1,0 +1,9 @@
+name: aft_dev
+channels:
+  - conda-forge
+  - pypi
+dependencies:
+  - pip>=23.3.1
+  - python>=3.12
+  - python-dotenv>=1.0.0
+  - requests>=2.31.0
