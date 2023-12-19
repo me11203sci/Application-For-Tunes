@@ -10,7 +10,9 @@ Description:
 Notes:
     TODO
 '''
-from dotenv import dotenv_values, find_dotenv
+from dotenv import dotenv_values, find_dotenv # type: ignore
+from InquirerPy import prompt # type: ignore
+from InquirerPy.validator import EmptyInputValidator # type: ignore
 import requests
 import sys
 from typing import Final
@@ -42,7 +44,7 @@ if __name__ == '__main__':
     print('Valid Spotify credentials found.')
 
     # Request valid Spotify Access Token
-    authorization_response: dict = requests.post(
+    authorization: dict = requests.post(
         'https://accounts.spotify.com/api/token',
         data={
             'grant_type' : 'client_credentials',
@@ -52,16 +54,62 @@ if __name__ == '__main__':
         headers={'Content-Type' : 'application/x-www-form-urlencoded'}
     ).json()
 
-    authorization_header: dict = {}
     # Create authorization header.
+    authorization_header: dict = {}
     try:
-        authorization_token: str = authorization_response['access_token']
-
         authorization_header = {
-            'Authorization' : f'Bearer {authorization_token}'
+            'Authorization' : f'Bearer {authorization["access_token"]}'
         }
     except KeyError:
         print(
             'Authorization token request failed, perhaps credentials are '
             'invalid?'
         )
+
+    question: list[dict] = [
+    ]
+
+    # Main loop.
+    while True:
+        query: str = str(
+            prompt(
+                {
+                    'type' : 'input',
+                    'message' : '\nEnter search query:',
+                    'qmark' : '',
+                    'amark' : '',
+                    'validate' : EmptyInputValidator(),
+                },
+                style={'answer' : '#ffffff'}
+            )[0]
+        )
+
+        search_mode: str = str(
+            prompt(
+                {
+                    'type' : 'list',
+                    'message' : 'Search by:',
+                    'choices' : ['Song'],
+                    'qmark' : '',
+                    'amark' : '',
+                },
+                style={'answer' : '#ffffff'}
+            )[0]
+        )
+
+        # TODO: Implement spotify look up.
+
+        continue_session: bool = bool(
+            prompt(
+                {
+                    'type' : 'confirm',
+                    'message' : 'Search again:',
+                    'qmark' : '',
+                    'amark' : '',
+                },
+                style={'answer' : '#ffffff'}
+            )[0]
+        )
+
+        if not continue_session:
+            break
