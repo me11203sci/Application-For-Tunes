@@ -11,6 +11,7 @@ Notes:
     TODO
 '''
 from dotenv import dotenv_values, find_dotenv
+import requests
 import sys
 from typing import Final
 
@@ -39,3 +40,28 @@ if __name__ == '__main__':
         sys.exit(0)
 
     print('Valid Spotify credentials found.')
+
+    # Request valid Spotify Access Token
+    authorization_response: dict = requests.post(
+        'https://accounts.spotify.com/api/token',
+        data={
+            'grant_type' : 'client_credentials',
+            'client_id' : credentials['spotify_id'],
+            'client_secret' : credentials['spotify_secret']
+        },
+        headers={'Content-Type' : 'application/x-www-form-urlencoded'}
+    ).json()
+
+    authorization_header: dict = {}
+    # Create authorization header.
+    try:
+        authorization_token: str = authorization_response['access_token']
+
+        authorization_header = {
+            'Authorization' : f'Bearer {authorization_token}'
+        }
+    except KeyError:
+        print(
+            'Authorization token request failed, perhaps credentials are '
+            'invalid?'
+        )
