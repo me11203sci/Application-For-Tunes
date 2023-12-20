@@ -184,37 +184,40 @@ if __name__ == '__main__':
             'invalid?'
         )
 
-    question: list[dict] = [
-    ]
+    query: str = ''
+    search_mode: str = ''
 
     # Main loop.
     while True:
-        query: str = str(
-            prompt(
-                {
-                    'type' : 'input',
-                    'message' : '\nEnter search query:',
-                    'qmark' : '',
-                    'amark' : '',
-                    'validate' : EmptyInputValidator(),
-                },
-                style={'answer' : '#ffffff'}
-            )[0]
-        )
+        try:
+            query: str = str(
+                prompt(
+                    {
+                        'type' : 'input',
+                        'message' : '\nEnter search query (Ctrl-c to cancel):',
+                        'qmark' : '',
+                        'amark' : '',
+                        'validate' : EmptyInputValidator(),
+                    },
+                    style={'answer' : '#ffffff'}
+                )[0]
+            )
 
-        search_mode: str = str(
-            prompt(
-                {
-                    'type' : 'list',
-                    'message' : 'Search by:',
-                    'choices' : ['Song'],
-                    'qmark' : '',
-                    'amark' : '',
-                    'pointer' : '>',
-                },
-                style={'answer' : '#ffffff'}
-            )[0]
-        )
+            search_mode: str = str(
+                prompt(
+                    {
+                        'type' : 'list',
+                        'message' : 'Search by (Ctrl-c to cancel):',
+                        'choices' : ['Song'],
+                        'qmark' : '',
+                        'amark' : '',
+                        'pointer' : '>',
+                    },
+                    style={'answer' : '#ffffff'}
+                )[0]
+            )
+        except KeyboardInterrupt:
+            print('Search cancled.')
 
         selection: list = []
         match search_mode:
@@ -246,48 +249,58 @@ if __name__ == '__main__':
 
                 formated_choices: list = format_song_results(tracks)
 
-                selection = list(
-                    prompt(
-                        {
-                            'type' : 'list',
-                            'message' :
-                                f'Top 50 results:\n'
-                                f'  ┌{"─" * 32}┬{"─" * 32}┬{"─" * 32}┬'
-                                f'{"─" * 12}┬{"─" * 8}┐\n  │{"Title":<32}│'
-                                f'{"Album":<32}│{"Artist":<32}│{"ISRC":<12}│'
-                                f'Duration│\n  ├{"─" * 32}┼{"─" * 32}┼'
-                                f'{"─" * 32}┼{"─" * 12}┼{"─" * 8}┤',
-                            'choices' : formated_choices,
-                            'qmark' : '',
-                            'amark' : '',
-                            'pointer' : '>',
-                            'show_cursor' : False,
-                            'transformer' : 
-                                lambda result:
-                                    f'\n  {result}\n  └{"─" * 32}┴{"─" * 32}┴'
-                                    f'{"─" * 32}┴{"─" * 12}┴{"─" * 8}┘',
-                            'filter' :
-                                lambda result:
-                                    tracks[formated_choices.index(result)],
-                        },
-                        style={'answer' : '#ffffff'}
-                    ).values()
-                )
+                try:
+                    selection = list(
+                        prompt(
+                            {
+                                'type' : 'list',
+                                'message' :
+                                    f'Top 50 results (Ctrl-c to cancel):\n'
+                                    f'  ┌{"─" * 32}┬{"─" * 32}┬{"─" * 32}┬'
+                                    f'{"─" * 12}┬{"─" * 8}┐\n  │{"Title":<32}│'
+                                    f'{"Album":<32}│{"Artist":<32}│'
+                                    f'{"ISRC":<12}│Duration│\n  ├{"─" * 32}┼'
+                                    f'{"─" * 32}┼{"─" * 32}┼{"─" * 12}┼'
+                                    f'{"─" * 8}┤',
+                                'choices' : formated_choices,
+                                'qmark' : '',
+                                'amark' : '',
+                                'pointer' : '>',
+                                'show_cursor' : False,
+                                'transformer' : 
+                                    lambda result:
+                                        f'\n  {result}\n  └{"─" * 32}┴'
+                                        f'{"─" * 32}┴{"─" * 32}┴{"─" * 12}┴'
+                                        f'{"─" * 8}┘',
+                                'filter' :
+                                    lambda result:
+                                        tracks[formated_choices.index(result)],
+                            },
+                            style={'answer' : '#ffffff'}
+                        ).values()
+                    )
+                except KeyboardInterrupt:
+                    print('Search cancled.')
+
+            # Catch user cancellation.
+            case _:
+                pass
 
         # Track progress of downloading selected song(s).
-        with alive_bar(enrich_print=False, unit=' songs') as progress_bar:
-            # Set up ouput folder if it does not exist already.
-            if not isdir('./output/'):
-                mkdir('./output/')
+        if selection:
+            with alive_bar(enrich_print=False, unit=' songs') as progress_bar:
+                # Set up ouput folder if it does not exist already.
+                if not isdir('./output/'):
+                    mkdir('./output/')
 
-            # Iterate through selected tracks. 
-            for entry in selection:
-                progress_bar.title(
-                    f'Downloading \'{entry["title"]}\' by '
-                    f'\'{entry["artist"]}\':'
-                )
-                download_song(entry)
-                progress_bar()
+                # Iterate through selected tracks. 
+                for entry in selection:
+                    progress_bar.title(
+                        f'Downloading \'{entry["title"]}\' by '
+                        f'\'{entry["artist"]}\':'
+                    )
+                    download_song(entry)
+                    progress_bar()
 
         continue_session: bool = bool(
             prompt(
