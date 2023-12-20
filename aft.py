@@ -10,20 +10,20 @@ Description:
 Notes:
     TODO
 '''
-from alive_progress import alive_bar
-import eyed3
-from eyed3.id3.frames import ImageFrame
+from alive_progress import alive_bar # type: ignore
+import eyed3 # type: ignore
+from eyed3.id3.frames import ImageFrame # type: ignore
 from dotenv import dotenv_values, find_dotenv # type: ignore
 from InquirerPy import prompt # type: ignore
 from InquirerPy.validator import EmptyInputValidator # type: ignore
-import music_tag
+import music_tag # type: ignore
 from os import makedirs
 from os.path import isdir, isfile
 import requests
 import sys
 from typing import Final
 from urllib.request import urlopen
-from yt_dlp import YoutubeDL
+from yt_dlp import YoutubeDL # type: ignore
 
 
 def format_song_results(data: list[dict]) -> list[str]:
@@ -98,7 +98,7 @@ def download_song(track_metadata: dict) -> None:
     Returns
     -------
     '''
-    song_name: str = track_metadata['title']
+    song_name: str = track_metadata['title'].replace('/', '\\')
     artist: str = track_metadata['artist']
     query: str = track_metadata['query']
     filename: str = f'{track_metadata["output_folder"]}{song_name}'
@@ -124,10 +124,12 @@ def download_song(track_metadata: dict) -> None:
 
     invidious_search_result = requests.get(
         'https://vid.puffyan.us/api/v1/search/?q='
-        f'{song_name.replace("\'", "").translate(character_encodings)}'
-        f'%20{artist.replace("\'", "").translate(character_encodings)}'
-        f'%20{query.replace("\'", "").translate(character_encodings)}'
-        '&type=video'
+        + '{0}+{1}+{2}'.format(
+            song_name.replace('\'', '').translate(character_encodings),
+            artist.replace('\'', '').translate(character_encodings),
+            query.replace('\'', '').translate(character_encodings)
+        )
+        + '&type=video'
     ).json()
 
     audio_source_url: str = (
@@ -227,7 +229,7 @@ if __name__ == '__main__':
     # Main loop.
     while True:
         try:
-            query: str = str(
+            query = str(
                 prompt(
                     {
                         'type' : 'input',
@@ -240,7 +242,7 @@ if __name__ == '__main__':
                 )[0]
             )
 
-            search_mode: str = str(
+            search_mode = str(
                 prompt(
                     {
                         'type' : 'list',
@@ -273,15 +275,14 @@ if __name__ == '__main__':
         selection: list = []
         match search_mode:
             case 'track':
-                # Parse relevant metadata per track.
-                tracks: list[dict] = [
-                    {
+                tracks: list[dict] = []
+                for track in initial_query_response['tracks']['items']:
+                    parsed_metadata: dict = {
                         'title' : track['name'],
                         'track_number' : track['track_number'],
                         'year' : track['album']['release_date'].split('-')[0],
                         'album_title' : track['album']['name'],
                         'total_tracks' : track['album']['total_tracks'],
-                        'image_link' : track['album']['images'][0]['url'],
                         'artist' : track['artists'][0]['name'],
                         'duration' :
                             f'{track["duration_ms"] // 60000}:'
@@ -289,8 +290,15 @@ if __name__ == '__main__':
                         'isrc' : track['external_ids']['isrc'],
                         'query' : query,
                     }
-                    for track in initial_query_response['tracks']['items']
-                ]
+
+                    # May not contain image, if so then use a placeholder image.
+                    try:
+                        parsed_metadata['image_link'] = track['album']['images'][0]['url'],
+
+                    except IndexError:
+                        parsed_metadata['image_link'] = 'https://i.imgur.com/yOJQUID.png'
+
+                    tracks.append(parsed_metadata)
 
                 formated_choices: list = format_song_results(tracks)
 
@@ -342,7 +350,7 @@ if __name__ == '__main__':
                     for album in initial_query_response['albums']['items']
                 ]
 
-                formated_choices: list = format_album_results(albums)
+                formated_choices = format_album_results(albums)
                 
                 album_search_header: str = (
                     f'Top 50 results (Ctrl-c to cancel):\n'
@@ -385,7 +393,7 @@ if __name__ == '__main__':
                     ).json()
 
                     # Parse relevant metadata per track.
-                    tracks: list[dict] = [
+                    tracks = [
                         {
                             'title' : track['name'],
                             'track_number' : track['track_number'],
