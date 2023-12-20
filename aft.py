@@ -10,12 +10,20 @@ Description:
 Notes:
     TODO
 '''
+from alive_progress import alive_bar
+import eyed3
+from eyed3.id3.frames import ImageFrame
 from dotenv import dotenv_values, find_dotenv # type: ignore
 from InquirerPy import prompt # type: ignore
 from InquirerPy.validator import EmptyInputValidator # type: ignore
+import music_tag
+from os import mkdir
+from os.path import isdir, isfile
 import requests
 import sys
 from typing import Final
+from urllib.request import urlopen
+from yt_dlp import YoutubeDL
 
 
 def format_song_results(data: list[dict]) -> list[str]:
@@ -48,6 +56,84 @@ def format_song_results(data: list[dict]) -> list[str]:
         + f'{t[3]}│{t[4]:<8}│'
         for t in formated_attributes 
     ]
+
+
+def download_song(track_metadata: dict) -> None:
+    '''
+    TODO: Numpy-Style Documentation String
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    '''
+    song_name: str = track_metadata['title']
+    artist: str = track_metadata['artist']
+    filename: str = f'./output/{song_name}'
+
+    # Check if the file already exists.
+    if isfile(f'{filename}.mp3'):
+        return
+
+    # Special characters break later A.P.I. queries.
+    character_encodings: dict = str.maketrans({
+        ' ' : '%20',
+        '$' : '%24',
+        '#' : '%23',
+        '&' : '%26',
+        '?' : '%3F',
+        ':' : '%3A'
+    })
+
+    invidious_search_result = requests.get(
+        'https://vid.puffyan.us/api/v1/search/?q='
+        f'{song_name.replace("\'", "").translate(character_encodings)}'
+        f'%20{artist.replace("\'", "").translate(character_encodings)}'
+        '&type=video'
+    ).json()
+
+    audio_source_url: str = (
+        'https://vid.puffyan.us/watch?v='
+        f'{invidious_search_result[0]["videoId"]}'
+    )
+
+    # Youtube Downloader configuration options.
+    options: dict = {
+        'outtmpl' : filename,
+        'quiet' : True,
+        'format': 'bestaudio/best',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+    }
+
+    with YoutubeDL(options) as youtube_downloader:
+        youtube_downloader.download(audio_source_url)
+
+    # Write ID3tags to mp3 file.
+    mp3_tags = music_tag.load_file(f'{filename}.mp3') # type: ignore
+    mp3_tags['tracktitle'] = song_name # type: ignore
+    mp3_tags['album'] = track_metadata['album_title'] # type: ignore
+    mp3_tags['artist'] = artist # type: ignore
+    mp3_tags['year'] = track_metadata['year'] # type: ignore
+    mp3_tags['tracknumber'] = track_metadata['track_number'] # type: ignore
+    mp3_tags['totaltracks'] = track_metadata['total_tracks'] # type: ignore
+    mp3_tags.save() # type: ignore
+
+    # Write image data.
+    audiofile = eyed3.load(f'{filename}.mp3') # type: ignore
+    audiofile.tag.images.set( # type: ignore
+        ImageFrame.FRONT_COVER,
+        urlopen(track_metadata['image_link']).read(),
+        'image/jpeg'
+    )
+    audiofile.tag.save() # type: ignore
+
+
+    return
 
 
 if __name__ == '__main__':
@@ -130,6 +216,7 @@ if __name__ == '__main__':
             )[0]
         )
 
+        selection: list = []
         match search_mode:
             case 'Song':
                 # Query Spotify.
@@ -159,37 +246,54 @@ if __name__ == '__main__':
 
                 formated_choices: list = format_song_results(tracks)
 
-                selection: dict = prompt(
-                    {
-                        'type' : 'list',
-                        'message' :
-                            f'Top 50 results:\n'
-                            f'  ┌{"─" * 32}┬{"─" * 32}┬{"─" * 32}┬{"─" * 12}┬'
-                            f'{"─" * 8}┐\n  │{"Title":<32}│{"Album":<32}│'
-                            f'{"Artist":<32}│{"ISRC":<12}│Duration│\n  ├'
-                            f'{"─" * 32}┼{"─" * 32}┼{"─" * 32}┼{"─" * 12}┼'
-                            f'{"─" * 8}┤',
-                        'choices' : formated_choices,
-                        'qmark' : '',
-                        'amark' : '',
-                        'pointer' : '>',
-                        'show_cursor' : False,
-                        'transformer' : 
-                            lambda result:
-                                f'\n  {result}\n  └{"─" * 32}┴{"─" * 32}┴'
-                                f'{"─" * 32}┴{"─" * 12}┴{"─" * 8}┘',
-                        'filter' :
-                            lambda result:
-                                tracks[formated_choices.index(result)],
-                    },
-                    style={'answer' : '#ffffff'}
+                selection = list(
+                    prompt(
+                        {
+                            'type' : 'list',
+                            'message' :
+                                f'Top 50 results:\n'
+                                f'  ┌{"─" * 32}┬{"─" * 32}┬{"─" * 32}┬'
+                                f'{"─" * 12}┬{"─" * 8}┐\n  │{"Title":<32}│'
+                                f'{"Album":<32}│{"Artist":<32}│{"ISRC":<12}│'
+                                f'Duration│\n  ├{"─" * 32}┼{"─" * 32}┼'
+                                f'{"─" * 32}┼{"─" * 12}┼{"─" * 8}┤',
+                            'choices' : formated_choices,
+                            'qmark' : '',
+                            'amark' : '',
+                            'pointer' : '>',
+                            'show_cursor' : False,
+                            'transformer' : 
+                                lambda result:
+                                    f'\n  {result}\n  └{"─" * 32}┴{"─" * 32}┴'
+                                    f'{"─" * 32}┴{"─" * 12}┴{"─" * 8}┘',
+                            'filter' :
+                                lambda result:
+                                    tracks[formated_choices.index(result)],
+                        },
+                        style={'answer' : '#ffffff'}
+                    ).values()
                 )
+
+        # Track progress of downloading selected song(s).
+        with alive_bar(enrich_print=False, unit=' songs') as progress_bar:
+            # Set up ouput folder if it does not exist already.
+            if not isdir('./output/'):
+                mkdir('./output/')
+
+            # Iterate through selected tracks. 
+            for entry in selection:
+                progress_bar.title(
+                    f'Downloading \'{entry["title"]}\' by '
+                    f'\'{entry["artist"]}\':'
+                )
+                download_song(entry)
+                progress_bar()
 
         continue_session: bool = bool(
             prompt(
                 {
                     'type' : 'confirm',
-                    'message' : 'Search again?:',
+                    'message' : 'Continue session?:',
                     'qmark' : '',
                     'amark' : '',
                 },
