@@ -3,8 +3,8 @@ Application For Tunes - Python Implementation
 
 Author(s): Melesio Albavera <ma6hv@mst.edu>
 Created: 18 December 2023
-Updated: 18 December 2023
-Version: 0.0
+Updated: 20 December 2023
+Version: 0.1
 Description:
     TODO
 Notes:
@@ -17,7 +17,7 @@ from dotenv import dotenv_values, find_dotenv # type: ignore
 from InquirerPy import prompt # type: ignore
 from InquirerPy.validator import EmptyInputValidator # type: ignore
 import music_tag
-from os import mkdir
+from os import makedirs
 from os.path import isdir, isfile
 import requests
 import sys
@@ -58,6 +58,36 @@ def format_song_results(data: list[dict]) -> list[str]:
     ]
 
 
+def format_album_results(data: list[dict]) -> list[str]:
+    '''
+    TODO: Numpy-Style Documentation String
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    '''
+    # Add padding to albums attributes.
+    formated_attributes: list[tuple[str, ...]] = [
+        (
+            f'{album["album_title"]:<32}',
+            f'{album["artist"]:<32}',
+            f'{album["total_tracks"]:<12}',
+            f'{album["year"]}',
+        )
+        for album in data
+    ]
+
+    # If padded attribute string exceeds cell width, truncate it.
+    return [
+        {0: f'│{a[0]}│', 1: f'│{a[0][:27] + " ... "}│'}[len(a[0]) > 32]
+        + {0: f'{a[1]}│', 1: f'{a[1][:27] + " ... "}│'}[len(a[1]) > 32]
+        + f'{a[2]}│{a[3]}│'
+        for a in formated_attributes 
+    ]
+
+
 def download_song(track_metadata: dict) -> None:
     '''
     TODO: Numpy-Style Documentation String
@@ -70,7 +100,12 @@ def download_song(track_metadata: dict) -> None:
     '''
     song_name: str = track_metadata['title']
     artist: str = track_metadata['artist']
-    filename: str = f'./output/{song_name}'
+    query: str = track_metadata['query']
+    filename: str = f'{track_metadata["output_folder"]}{song_name}'
+
+    # Set up ouput folder if it does not exist already.
+    if not isdir(track_metadata["output_folder"]):
+        makedirs(track_metadata["output_folder"])
 
     # Check if the file already exists.
     if isfile(f'{filename}.mp3'):
@@ -78,10 +113,11 @@ def download_song(track_metadata: dict) -> None:
 
     # Special characters break later A.P.I. queries.
     character_encodings: dict = str.maketrans({
-        ' ' : '%20',
+        ' ' : '+',
         '$' : '%24',
         '#' : '%23',
         '&' : '%26',
+        ',' : '%2C',
         '?' : '%3F',
         ':' : '%3A'
     })
@@ -90,6 +126,7 @@ def download_song(track_metadata: dict) -> None:
         'https://vid.puffyan.us/api/v1/search/?q='
         f'{song_name.replace("\'", "").translate(character_encodings)}'
         f'%20{artist.replace("\'", "").translate(character_encodings)}'
+        f'%20{query.replace("\'", "").translate(character_encodings)}'
         '&type=video'
     ).json()
 
@@ -131,7 +168,6 @@ def download_song(track_metadata: dict) -> None:
         'image/jpeg'
     )
     audiofile.tag.save() # type: ignore
-
 
     return
 
@@ -186,6 +222,7 @@ if __name__ == '__main__':
 
     query: str = ''
     search_mode: str = ''
+    output_folder: str = './output/'
 
     # Main loop.
     while True:
@@ -208,27 +245,34 @@ if __name__ == '__main__':
                     {
                         'type' : 'list',
                         'message' : 'Search by (Ctrl-c to cancel):',
-                        'choices' : ['Song'],
+                        'choices' : ['Album', 'Song'],
                         'qmark' : '',
                         'amark' : '',
                         'pointer' : '>',
+                        'filter' : lambda result:
+                            {
+                                'Album' : 'album',
+                                'Song' : 'track',
+                            }[result],
                     },
                     style={'answer' : '#ffffff'}
                 )[0]
             )
         except KeyboardInterrupt:
-            print('Search cancled.')
+            print('Search cancelled.')
+
+        initial_query_response: dict = {}
+        if search_mode:
+            # Query Spotify.
+            initial_query_response = requests.get(
+                f'https://api.spotify.com/v1/search?q={query}&type='
+                f'{search_mode}&limit=50',
+                headers=authorization_header
+            ).json()
 
         selection: list = []
         match search_mode:
-            case 'Song':
-                # Query Spotify.
-                song_search_response: dict = requests.get(
-                    f'https://api.spotify.com/v1/search?q={query}&type=track&'
-                    f'limit=50',
-                    headers=authorization_header
-                ).json()
-
+            case 'track':
                 # Parse relevant metadata per track.
                 tracks: list[dict] = [
                     {
@@ -242,26 +286,28 @@ if __name__ == '__main__':
                         'duration' :
                             f'{track["duration_ms"] // 60000}:'
                             f'{track["duration_ms"] // 1000 % 60:02}',
-                        'isrc' : track['external_ids']['isrc']
+                        'isrc' : track['external_ids']['isrc'],
+                        'query' : query,
                     }
-                    for track in song_search_response['tracks']['items']
+                    for track in initial_query_response['tracks']['items']
                 ]
 
                 formated_choices: list = format_song_results(tracks)
+
+                song_search_header: str = (
+                    f'Top 50 results (Ctrl-c to cancel):\n'
+                    f'  ┌{"─" * 32}┬{"─" * 32}┬{"─" * 32}┬{"─" * 12}┬{"─" * 8}'
+                    f'┐\n  │{"Title":<32}│{"Album":<32}│{"Artist":<32}│'
+                    f'{"ISRC":<12}│Duration│\n  '
+                    f'├{"─" * 32}┼{"─" * 32}┼{"─" * 32}┼{"─" * 12}┼{"─" * 8}┤'
+                )
 
                 try:
                     selection = list(
                         prompt(
                             {
                                 'type' : 'list',
-                                'message' :
-                                    f'Top 50 results (Ctrl-c to cancel):\n'
-                                    f'  ┌{"─" * 32}┬{"─" * 32}┬{"─" * 32}┬'
-                                    f'{"─" * 12}┬{"─" * 8}┐\n  │{"Title":<32}│'
-                                    f'{"Album":<32}│{"Artist":<32}│'
-                                    f'{"ISRC":<12}│Duration│\n  ├{"─" * 32}┼'
-                                    f'{"─" * 32}┼{"─" * 32}┼{"─" * 12}┼'
-                                    f'{"─" * 8}┤',
+                                'message' : song_search_header,
                                 'choices' : formated_choices,
                                 'qmark' : '',
                                 'amark' : '',
@@ -280,7 +326,83 @@ if __name__ == '__main__':
                         ).values()
                     )
                 except KeyboardInterrupt:
-                    print('Search cancled.')
+                    print('Search cancelled.')
+
+            case 'album':
+                # Parse relevant metadata per track.
+                albums: list[dict] = [
+                    {
+                        'year' : album['release_date'].split('-')[0],
+                        'album_title' : album['name'],
+                        'total_tracks' : album['total_tracks'],
+                        'artist' : album['artists'][0]['name'],
+                        'image_link' : album['images'][0]['url'],
+                        'id' : album['id'],
+                    }
+                    for album in initial_query_response['albums']['items']
+                ]
+
+                formated_choices: list = format_album_results(albums)
+                
+                album_search_header: str = (
+                    f'Top 50 results (Ctrl-c to cancel):\n'
+                    f'  ┌{"─" * 32}┬{"─" * 32}┬{"─" * 12}┬{"─" * 4}┐\n'
+                    f'  │{"Album":<32}│{"Artist":<32}│Total Tracks│Year'
+                    f'│\n  ├{"─" * 32}┼{"─" * 32}┼{"─" * 12}┼{"─" * 4}┤'
+                )
+
+                try:
+                    selection = list(
+                        prompt(
+                            {
+                                'type' : 'list',
+                                'message' : album_search_header,
+                                'choices' : formated_choices,
+                                'qmark' : '',
+                                'amark' : '',
+                                'pointer' : '>',
+                                'show_cursor' : False,
+                                'transformer' : 
+                                    lambda result:
+                                        f'\n  {result}\n  └{"─" * 32}┴'
+                                        f'{"─" * 32}┴{"─" * 12}┴'
+                                        f'{"─" * 4}┘',
+                                'filter' :
+                                    lambda result:
+                                        albums[formated_choices.index(result)],
+                            },
+                            style={'answer' : '#ffffff'}
+                        ).values()
+                    )
+
+                    output_folder = f'./output/{selection[0]["album_title"]}/'
+
+                    # Query Spotify for the album trackslist.
+                    album_query_response = requests.get(
+                        f'https://api.spotify.com/v1/albums/'
+                        f'{selection[0]["id"]}/tracks',
+                        headers=authorization_header
+                    ).json()
+
+                    # Parse relevant metadata per track.
+                    tracks: list[dict] = [
+                        {
+                            'title' : track['name'],
+                            'track_number' : track['track_number'],
+                            'year' : selection[0]['year'],
+                            'album_title' : selection[0]['album_title'],
+                            'total_tracks' : selection[0]['total_tracks'], 
+                            'image_link' : selection[0]['image_link'],
+                            'artist' : selection[0]['artist'],
+                            'query' : query,
+                        }
+                        for track in album_query_response['items']
+                    ]
+
+                    selection = tracks
+
+                except KeyboardInterrupt:
+                    print('Search cancelled.')
 
             # Catch user cancellation.
             case _:
@@ -289,12 +411,10 @@ if __name__ == '__main__':
         # Track progress of downloading selected song(s).
         if selection:
             with alive_bar(enrich_print=False, unit=' songs') as progress_bar:
-                # Set up ouput folder if it does not exist already.
-                if not isdir('./output/'):
-                    mkdir('./output/')
-
                 # Iterate through selected tracks. 
                 for entry in selection:
+                    entry['output_folder'] = output_folder
+
                     progress_bar.title(
                         f'Downloading \'{entry["title"]}\' by '
                         f'\'{entry["artist"]}\':'
