@@ -11,4 +11,5 @@ dependencies:
   - yt-dlp>=2023.11.16
   - pip:
     - eyed3
+    - inquirerpy
     - music-tag
