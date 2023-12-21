@@ -4,7 +4,7 @@ Application For Tunes - Python Implementation
 Author(s): Melesio Albavera <ma6hv@mst.edu>
 Created: 18 December 2023
 Updated: 20 December 2023
-Version: 0.2
+Version: 0.3
 Description:
     TODO
 Notes:
@@ -24,6 +24,24 @@ import sys
 from typing import Any, Final
 from urllib.request import urlopen
 from yt_dlp import YoutubeDL # type: ignore
+
+
+class AudioSourceSelectInterrupt(Exception):
+    def __init__(self, r) -> None:
+        super().__init__()
+
+
+def raise_audio_select_interrupt(result) -> None:
+    '''
+    TODO: Numpy-Style Documentation String
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    '''
+    raise AudioSourceSelectInterrupt(result)
 
 
 def format_song_results(data: list[dict]) -> list[str]:
@@ -125,23 +143,22 @@ def get_audio_source_url(query_result: dict) -> str:
                 'amark' : '',
                 'pointer' : '>',
                 'show_cursor' : False,
+                'transformer' : raise_audio_select_interrupt,
                 'filter' :
                     lambda result:
                         formated_choices.index(result),
             },
             style={'answer' : '#ffffff'}
         )[0]
+    except AudioSourceSelectInterrupt:
+        sys.stdout.write('\033[2KAudio source selected.\r')
+
     except KeyboardInterrupt:
         sys.stdout.write(
             '\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K'
             'No audio source selected.\r'
         )
         return ''
-
-    sys.stdout.write(
-        '\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K'
-        '\033[A\033[2KAudio source selected.\r'
-    )
 
     return f'https://www.youtube.com/watch?v={query_result[index]["videoId"]}'
 
@@ -199,8 +216,10 @@ def download_song(track_metadata: dict) -> None:
     # Youtube Downloader configuration options.
     options: dict = {
         'outtmpl' : filename,
+        'noprogress' : True,
         'quiet' : True,
         'format': 'bestaudio/best',
+        'concurrent_fragment_downloads': 32,
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -480,7 +499,7 @@ if __name__ == '__main__':
 
         # Track progress of downloading selected song(s).
         if selection:
-            with alive_bar(enrich_print=False, unit=' songs') as progress_bar:
+            with alive_bar(enrich_print=False, unit=' songs', calibrate=1) as progress_bar:
                 # Iterate through selected tracks. 
                 for entry in selection:
                     entry['output_folder'] = output_folder
