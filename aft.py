@@ -101,10 +101,14 @@ def get_audio_source_url(query_result: dict) -> str:
     index: Any = 0
 
     formated_choices: list = []
-    for url in query_result:
-        link: str = f'https://www.youtube.com/watch?v={url["videoId"]}'
+    for result in query_result:
+        video_title: str = result["title"]
+        channel: str = result["author"]
+        link: str = f'https://www.youtube.com/watch?v={result["videoId"]}'
         formated_choices.append(
-            f'│{link:<64}│'
+            {0: f'│{video_title:<32}│', 1: f'│{video_title:<32}'[:28] + ' ... │'}[len(video_title) > 32]
+            + {0: f'{channel:<32}│', 1: f'{channel:<32}'[:28] + ' ... │'}[len(channel) > 32]
+            + f'{link:<48}│'
         )
 
     try:
@@ -112,8 +116,10 @@ def get_audio_source_url(query_result: dict) -> str:
             {
                 'type' : 'list',
                 'message' :
-                    f'\nSelect audio source (Ctrl-c to cancel):\n  ┌{"─" * 64}┐'
-                    f'\n  │{"Youtube Link":<64}│\n  ├{"─" * 64}┤',
+                    f'\nSelect audio source (Ctrl-c to cancel):'
+                    f'\n  ┌{"─" * 32}┬{"─" * 32}┬{"─" * 48}┐'
+                    f'\n  │{"Video Title":<32}│{"Channel":<32}│{"Youtube Link":<48}│'
+                    f'\n  ├{"─" * 32}┼{"─" * 32}┼{"─" * 48}┤',
                 'choices' : formated_choices,
                 'qmark' : '',
                 'amark' : '',
@@ -126,10 +132,16 @@ def get_audio_source_url(query_result: dict) -> str:
             style={'answer' : '#ffffff'}
         )[0]
     except KeyboardInterrupt:
-        sys.stdout.write('\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2KNo audio source selected.\r')
+        sys.stdout.write(
+            '\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K'
+            'No audio source selected.\r'
+        )
         return ''
 
-    sys.stdout.write("\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2KAudio source selected.\r")
+    sys.stdout.write(
+        '\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K'
+        '\033[A\033[2KAudio source selected.\r'
+    )
 
     return f'https://www.youtube.com/watch?v={query_result[index]["videoId"]}'
 
@@ -477,7 +489,9 @@ if __name__ == '__main__':
                         f'Downloading \'{entry["title"]}\' by '
                         f'\'{entry["artist"]}\':'
                     )
+
                     download_song(entry)
+
                     progress_bar()
 
         continue_session: bool = bool(
