@@ -4,7 +4,7 @@ Application For Tunes - Python Implementation
 Author(s): Melesio Albavera <ma6hv@mst.edu>
 Created: 18 December 2023
 Updated: 20 December 2023
-Version: 0.1
+Version: 0.2
 Description:
     TODO
 Notes:
@@ -17,11 +17,11 @@ from dotenv import dotenv_values, find_dotenv # type: ignore
 from InquirerPy import prompt # type: ignore
 from InquirerPy.validator import EmptyInputValidator # type: ignore
 import music_tag # type: ignore
-from os import makedirs
+from os import makedirs, system
 from os.path import isdir, isfile
 import requests
 import sys
-from typing import Final
+from typing import Any, Final
 from urllib.request import urlopen
 from yt_dlp import YoutubeDL # type: ignore
 
@@ -88,6 +88,52 @@ def format_album_results(data: list[dict]) -> list[str]:
     ]
 
 
+def get_audio_source_url(query_result: dict) -> str:
+    '''
+    TODO: Numpy-Style Documentation String
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    '''
+    index: Any = 0
+
+    formated_choices: list = []
+    for url in query_result:
+        link: str = f'https://www.youtube.com/watch?v={url["videoId"]}'
+        formated_choices.append(
+            f'│{link:<64}│'
+        )
+
+    try:
+        index = prompt(
+            {
+                'type' : 'list',
+                'message' :
+                    f'\nSelect audio source (Ctrl-c to cancel):\n  ┌{"─" * 64}┐'
+                    f'\n  │{"Youtube Link":<64}│\n  ├{"─" * 64}┤',
+                'choices' : formated_choices,
+                'qmark' : '',
+                'amark' : '',
+                'pointer' : '>',
+                'show_cursor' : False,
+                'filter' :
+                    lambda result:
+                        formated_choices.index(result),
+            },
+            style={'answer' : '#ffffff'}
+        )[0]
+    except KeyboardInterrupt:
+        sys.stdout.write('\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2KNo audio source selected.\r')
+        return ''
+
+    sys.stdout.write("\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2KAudio source selected.\r")
+
+    return f'https://www.youtube.com/watch?v={query_result[index]["videoId"]}'
+
+
 def download_song(track_metadata: dict) -> None:
     '''
     TODO: Numpy-Style Documentation String
@@ -122,7 +168,7 @@ def download_song(track_metadata: dict) -> None:
         ':' : '%3A'
     })
 
-    invidious_search_result = requests.get(
+    invidious_search_result: dict = requests.get(
         'https://vid.puffyan.us/api/v1/search/?q='
         + '{0}+{1}+{2}'.format(
             song_name.replace('\'', '').translate(character_encodings),
@@ -132,10 +178,11 @@ def download_song(track_metadata: dict) -> None:
         + '&type=video'
     ).json()
 
-    audio_source_url: str = (
-        'https://vid.puffyan.us/watch?v='
-        f'{invidious_search_result[0]["videoId"]}'
-    )
+    audio_source_url: str = get_audio_source_url(invidious_search_result)
+
+    # No audio source was selected.
+    if not audio_source_url:
+        return
 
     # Youtube Downloader configuration options.
     options: dict = {
@@ -175,6 +222,9 @@ def download_song(track_metadata: dict) -> None:
 
 
 if __name__ == '__main__':
+    # May or may not make my A.S.C.I.I. escape code work on Windows.
+    system("")
+
     # Print A.S.C.I.I. text splash screen from file.
     try:
         with open('splash.txt', 'r') as splash_text:
@@ -293,7 +343,7 @@ if __name__ == '__main__':
 
                     # May not contain image, if so then use a placeholder image.
                     try:
-                        parsed_metadata['image_link'] = track['album']['images'][0]['url'],
+                        parsed_metadata['image_link'] = track['album']['images'][0]['url']
 
                     except IndexError:
                         parsed_metadata['image_link'] = 'https://i.imgur.com/yOJQUID.png'
