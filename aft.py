@@ -152,6 +152,7 @@ def get_audio_source_url(query_result: dict) -> str:
         )[0]
     except AudioSourceSelectInterrupt:
         sys.stdout.write('\033[2KAudio source selected.\r')
+        sys.stdout.flush()
 
     except KeyboardInterrupt:
         sys.stdout.write(

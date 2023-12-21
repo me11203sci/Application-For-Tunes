@@ -10,7 +10,7 @@ to provide the U.R.L. audio source(s).
 
 While there are many ways to skin the cat per say, we reccomend using
 the [Mamba](https://github.com/mamba-org/mamba) project for quick and frictionless experience. After installing [miniforge](https://github.com/conda-forge/miniforge)
-begin by cloning the repository to your machine (assuming SSH, which you can set up by following ![this](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) tutorial) and entering the resulting directory using:
+begin by cloning the repository to your machine (assuming SSH, which you can set up by following [this](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) tutorial) and entering the resulting directory using:
 
 ```
 git clone git@github.com:me11203sci/Application-For-Tunes.git 
