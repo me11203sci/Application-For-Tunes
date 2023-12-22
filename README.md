@@ -5,7 +5,7 @@ It utilizes Spotify A.P.I. for metadata content and uses the Invidious A.P.I.
 to provide the U.R.L. audio source(s). It uses the [yt-dlp](https://github.com/yt-dlp/yt-dlp) video downloader
 and appends the corresponding metadata adhereing to the [ID3tag standard](https://mutagen-specs.readthedocs.io/en/latest/id3/id3v2.4.0-structure.html).
 
-![](./media/demo_song_search.gif)
+![](./media/demo.gif)
 
 ## Installing Dependencies
 
@@ -64,6 +64,7 @@ python aft.py
 #### Note for Windows Users
 
 Some Windows Users may experience the following error:
+
 ![](./media/windows_error.png)
 
 This is a known issue with an simple solution. You may notice the following output when running aft and passing it the optional help flag:
@@ -86,8 +87,9 @@ options:
 
 If Windows fails to point the program to the proper ffmpeg executable, then open the folder
 in which you installed mamba and make sure ffmpeg is in fact installed. If it is, then copy the 
-path to . For example, assuming you installed miniforge:
+path to it and pass it (without quotes) to the program. For example, assuming you installed 
+miniforge in the default location:
 
 ```
-python aft.py -p 'C:\Users\<windows_username>\miniforge\Library\bin\ffmpeg.exe'
+python aft.py -p C:\Users\<windows_username>\miniforge\Library\bin\ffmpeg.exe
 ```
