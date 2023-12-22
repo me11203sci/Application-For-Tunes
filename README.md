@@ -2,7 +2,8 @@
 
 This script was written in order to aid in building my personal playlist.
 It utilizes Spotify A.P.I. for metadata content and uses the Invidious A.P.I.
-to provide the U.R.L. audio source(s).
+to provide the U.R.L. audio source(s). It uses the [yt-dlp](https://github.com/yt-dlp/yt-dlp) video downloader
+and appends the corresponding metadata adhereing to the [ID3tag standard](https://mutagen-specs.readthedocs.io/en/latest/id3/id3v2.4.0-structure.html).
 
 ![](./media/demo_song_search.gif)
 

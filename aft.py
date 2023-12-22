@@ -16,9 +16,11 @@ from eyed3.id3.frames import ImageFrame # type: ignore
 from dotenv import dotenv_values, find_dotenv # type: ignore
 from InquirerPy import prompt # type: ignore
 from InquirerPy.validator import EmptyInputValidator # type: ignore
+from io import BytesIO
 import music_tag # type: ignore
 from os import makedirs, system
 from os.path import isdir, isfile
+from PIL import Image # type: ignore
 import requests
 import sys
 from typing import Any, Final
@@ -164,7 +166,7 @@ def get_audio_source_url(query_result: dict) -> str:
     return f'https://www.youtube.com/watch?v={query_result[index]["videoId"]}'
 
 
-def download_song(track_metadata: dict) -> None:
+def download_song(track_metadata: dict, scale_image: bool) -> None:
     '''
     TODO: Numpy-Style Documentation String
 
@@ -241,11 +243,19 @@ def download_song(track_metadata: dict) -> None:
     mp3_tags['totaltracks'] = track_metadata['total_tracks'] # type: ignore
     mp3_tags.save() # type: ignore
 
+    # Read image data and rescale if nessessary.
+    image_data: bytes = urlopen(track_metadata['image_link']).read()
+    if scale_image:
+        image = Image.open(BytesIO(image_data), 'r') # type: ignore
+        image.thumbnail((480, 480))
+        image.save((buffer := BytesIO()), format=image.format)
+        image_data = buffer.getvalue()
+
     # Write image data.
     audiofile = eyed3.load(f'{filename}.mp3') # type: ignore
     audiofile.tag.images.set( # type: ignore
         ImageFrame.FRONT_COVER,
-        urlopen(track_metadata['image_link']).read(),
+        image_data,
         'image/jpeg'
     )
     audiofile.tag.save() # type: ignore
@@ -254,6 +264,21 @@ def download_song(track_metadata: dict) -> None:
 
 
 if __name__ == '__main__':
+    # Parse flag to down scale album covert art to fit on an MP3 player screen.
+    downscale_art: bool = False
+    try:
+        assert(sys.argv[1] in ('--downscale-art', '-d'))
+        downscale_art = True
+    except AssertionError:
+        # Print cli man page
+        print(
+            'usage: python aft.py [-d, --downscale-art]\npython aft.py: error:'
+            ' invalid flag(s)'
+        )
+        sys.exit(0)
+    except IndexError:
+        pass
+
     # May or may not make my A.S.C.I.I. escape code work on Windows.
     system("")
 
@@ -510,7 +535,7 @@ if __name__ == '__main__':
                         f'\'{entry["artist"]}\':'
                     )
 
-                    download_song(entry)
+                    download_song(entry, downscale_art)
 
                     progress_bar()
 
