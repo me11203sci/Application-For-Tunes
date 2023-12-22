@@ -63,9 +63,12 @@ python aft.py
 
 #### Note for Windows Users
 
-You may notice the following output when passing the help flag:
+Some Windows Users may experience the following error:
+![](./media/windows_error.png)
 
-```
+This is a known issue with an simple solution. You may notice the following output when running aft and passing it the optional help flag:
+
+```{: .no-copy}
 python aft.py -h
 usage: aft.py [-h] [-d] [-p PATH]
 
@@ -74,14 +77,17 @@ Search for and download mp3 files and their corresponding metadata.
 options:
   -h, --help            show this help message and exit
   -d, --downscale_image
-                        Downscale album art to 480 x 480 for display on small devices.
-  -p PATH, --path_to_ffmpeg PATH
-                        For Windows Users. Allows for the passing of the path to the ffmpeg excutable.
+                        Downscale album art to 480 x 480 for display on small 
+                        devices.
+  -p PATH, --ffmpeg-location PATH
+                        For Windows Users. Allows for the passing of the path to 
+                        the ffmpeg excutable.
 ```
 
 If Windows fails to point the program to the proper ffmpeg executable, then open the folder
-in which you installed mamba and make sure ffmpeg is. For example, assuming you installed mamba forge:
+in which you installed mamba and make sure ffmpeg is in fact installed. If it is, then copy the 
+path to . For example, assuming you installed miniforge:
 
 ```
-python aft.py -p 'C:\Users\<windows_username>\mambaforge\Library\bin\ffmpeg.exe'
+python aft.py -p 'C:\Users\<windows_username>\miniforge\Library\bin\ffmpeg.exe'
 ```

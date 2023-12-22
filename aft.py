@@ -299,18 +299,20 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '-p',
-        '--path_to_ffmpeg',
+        '--ffmpeg-location',
         help=(
             'For Windows Users. Allows for the passing of the path to the '
             'ffmpeg excutable.'
         ),
         metavar='PATH',
         dest='path_to_ffmpeg',
+        default='\0',
+        type=str,
         nargs=1
     )
     parsed_arguments: Namespace = parser.parse_args()
     downscale_art: bool = parsed_arguments.downscale_art
-    ffmpeg_path: str = parsed_arguments.path_to_ffmpeg
+    ffmpeg_path: str = parsed_arguments.path_to_ffmpeg[0]
 
     # Make my A.S.C.I.I. escape code work on Windows.
     system('')
@@ -578,8 +580,8 @@ if __name__ == '__main__':
 
                     try:
                         download_song(entry, downscale_art, ffmpeg_path)
-                    except DownloadError as e:
-                        print(f'A download error occured.\n{e}')
+                    except DownloadError:
+                        progress_bar.pause()
                         sys.exit(0)
 
                     progress_bar()
