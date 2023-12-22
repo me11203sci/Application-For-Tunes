@@ -10,6 +10,7 @@ Description:
 Notes:
     TODO
 '''
+from argparse import ArgumentParser, Namespace
 from alive_progress import alive_bar # type: ignore
 import eyed3 # type: ignore
 from eyed3.id3.frames import ImageFrame # type: ignore
@@ -29,7 +30,7 @@ from yt_dlp import YoutubeDL # type: ignore
 
 
 class AudioSourceSelectInterrupt(Exception):
-    def __init__(self, r) -> None:
+    def __init__(self, discard_result: dict) -> None:
         super().__init__()
 
 
@@ -126,8 +127,14 @@ def get_audio_source_url(query_result: dict) -> str:
         channel: str = result["author"]
         link: str = f'https://www.youtube.com/watch?v={result["videoId"]}'
         formated_choices.append(
-            {0: f'│{video_title:<32}│', 1: f'│{video_title:<32}'[:28] + ' ... │'}[len(video_title) > 32]
-            + {0: f'{channel:<32}│', 1: f'{channel:<32}'[:28] + ' ... │'}[len(channel) > 32]
+            {
+                0: f'│{video_title:<32}│',
+                1: f'│{video_title:<32}'[:28] + ' ... │'
+            }[len(video_title) > 32]
+            + {
+                0: f'{channel:<32}│',
+                1: f'{channel:<32}'[:28] + ' ... │'
+            }[len(channel) > 32]
             + f'{link:<48}│'
         )
 
@@ -138,7 +145,8 @@ def get_audio_source_url(query_result: dict) -> str:
                 'message' :
                     f'\nSelect audio source (Ctrl-c to cancel):'
                     f'\n  ┌{"─" * 32}┬{"─" * 32}┬{"─" * 48}┐'
-                    f'\n  │{"Video Title":<32}│{"Channel":<32}│{"Youtube Link":<48}│'
+                    f'\n  │{"Video Title":<32}│{"Channel":<32}│'
+                    f'{"Youtube Link":<48}│'
                     f'\n  ├{"─" * 32}┼{"─" * 32}┼{"─" * 48}┤',
                 'choices' : formated_choices,
                 'qmark' : '',
@@ -264,23 +272,26 @@ def download_song(track_metadata: dict, scale_image: bool) -> None:
 
 
 if __name__ == '__main__':
-    # Parse flag to down scale album covert art to fit on an MP3 player screen.
-    downscale_art: bool = False
-    try:
-        assert(sys.argv[1] in ('--downscale-art', '-d'))
-        downscale_art = True
-    except AssertionError:
-        # Print cli man page
-        print(
-            'usage: python aft.py [-d, --downscale-art]\npython aft.py: error:'
-            ' invalid flag(s)'
+    # Parse flags.
+    parser: ArgumentParser = ArgumentParser(
+        description=(
+            'Search for and download mp3 files and their corresponding '
+            'metadata.'
         )
-        sys.exit(0)
-    except IndexError:
-        pass
+    )
+    parser.add_argument(
+        '-d',
+        '--downscale_image',
+        help='Downscale album art to 480 x 480 for display on small devices.',
+        dest='downscale_art',
+        default=False,
+        action='store_true'
+    )
+    parsed_arguments: Namespace = parser.parse_args()
+    downscale_art: bool = parsed_arguments.downscale_art
 
-    # May or may not make my A.S.C.I.I. escape code work on Windows.
-    system("")
+    # Make my A.S.C.I.I. escape code work on Windows.
+    system('')
 
     # Print A.S.C.I.I. text splash screen from file.
     try:
@@ -398,12 +409,16 @@ if __name__ == '__main__':
                         'query' : query,
                     }
 
-                    # May not contain image, if so then use a placeholder image.
+                    # May not contain image; use a placeholder image.
                     try:
-                        parsed_metadata['image_link'] = track['album']['images'][0]['url']
+                        parsed_metadata['image_link'] = (
+                            track['album']['images'][0]['url']
+                        )
 
                     except IndexError:
-                        parsed_metadata['image_link'] = 'https://i.imgur.com/yOJQUID.png'
+                        parsed_metadata['image_link'] = (
+                            'https://i.imgur.com/yOJQUID.png'
+                        )
 
                     tracks.append(parsed_metadata)
 
@@ -525,7 +540,11 @@ if __name__ == '__main__':
 
         # Track progress of downloading selected song(s).
         if selection:
-            with alive_bar(enrich_print=False, unit=' songs', calibrate=1) as progress_bar:
+            with alive_bar(
+                enrich_print=False,
+                unit=' songs',
+                calibrate=1
+            ) as progress_bar:
                 # Iterate through selected tracks. 
                 for entry in selection:
                     entry['output_folder'] = output_folder
@@ -547,6 +566,7 @@ if __name__ == '__main__':
                     'qmark' : '',
                     'amark' : '',
                 },
+                raise_keyboard_interrupt=False,
                 style={'answer' : '#ffffff'}
             )[0]
         )
