@@ -3,8 +3,8 @@ Application For Tunes - Python Implementation
 
 Author(s): Melesio Albavera <ma6hv@mst.edu>
 Created: 18 December 2023
-Updated: 20 December 2023
-Version: 0.3
+Updated: 22 December 2023
+Version: 0.4
 Description:
     TODO
 Notes:
@@ -19,7 +19,7 @@ from InquirerPy import prompt # type: ignore
 from InquirerPy.validator import EmptyInputValidator # type: ignore
 from io import BytesIO
 import music_tag # type: ignore
-from os import makedirs, system
+from os import makedirs, name, system
 from os.path import isdir, isfile
 from PIL import Image # type: ignore
 import requests
@@ -27,6 +27,7 @@ import sys
 from typing import Any, Final
 from urllib.request import urlopen
 from yt_dlp import YoutubeDL # type: ignore
+from yt_dlp.utils import DownloadError # type: ignore
 
 
 class AudioSourceSelectInterrupt(Exception):
@@ -174,7 +175,11 @@ def get_audio_source_url(query_result: dict) -> str:
     return f'https://www.youtube.com/watch?v={query_result[index]["videoId"]}'
 
 
-def download_song(track_metadata: dict, scale_image: bool) -> None:
+def download_song(
+    track_metadata: dict,
+    scale_image: bool,
+    ffmpeg_path: str =''
+) -> None:
     '''
     TODO: Numpy-Style Documentation String
 
@@ -238,6 +243,10 @@ def download_song(track_metadata: dict, scale_image: bool) -> None:
         }],
     }
 
+    # Windows-only fix.
+    if name == 'nt':
+        options['ffmpeg_location'] = ffmpeg_path
+
     with YoutubeDL(options) as youtube_downloader:
         youtube_downloader.download(audio_source_url)
 
@@ -266,7 +275,8 @@ def download_song(track_metadata: dict, scale_image: bool) -> None:
         image_data,
         'image/jpeg'
     )
-    audiofile.tag.save() # type: ignore
+    # Windows media player and such only support ID3v2.3.
+    audiofile.tag.save(version=(2,3,0)) # type: ignore
 
     return
 
@@ -287,8 +297,20 @@ if __name__ == '__main__':
         default=False,
         action='store_true'
     )
+    parser.add_argument(
+        '-p',
+        '--path_to_ffmpeg',
+        help=(
+            'For Windows Users. Allows for the passing of the path to the '
+            'ffmpeg excutable.'
+        ),
+        metavar='PATH',
+        dest='path_to_ffmpeg',
+        nargs=1
+    )
     parsed_arguments: Namespace = parser.parse_args()
     downscale_art: bool = parsed_arguments.downscale_art
+    ffmpeg_path: str = parsed_arguments.path_to_ffmpeg
 
     # Make my A.S.C.I.I. escape code work on Windows.
     system('')
@@ -554,7 +576,11 @@ if __name__ == '__main__':
                         f'\'{entry["artist"]}\':'
                     )
 
-                    download_song(entry, downscale_art)
+                    try:
+                        download_song(entry, downscale_art, ffmpeg_path)
+                    except DownloadError as e:
+                        print(f'A download error occured.\n{e}')
+                        sys.exit(0)
 
                     progress_bar()
 

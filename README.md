@@ -11,7 +11,8 @@ and appends the corresponding metadata adhereing to the [ID3tag standard](https:
 
 While there are many ways to skin the cat per say, we reccomend using
 the [Mamba](https://github.com/mamba-org/mamba) project for quick and frictionless experience. After installing [miniforge](https://github.com/conda-forge/miniforge)
-begin by cloning the repository to your machine (assuming SSH, which you can set up by following [this](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) tutorial) and entering the resulting directory using:
+and opening Miniforge Prompt, begin by cloning the repository to your machine 
+(assuming SSH, which you can set up by following [this](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) tutorial) and entering the resulting directory using:
 
 ```
 git clone git@github.com:me11203sci/Application-For-Tunes.git 
@@ -58,3 +59,29 @@ The script can be run with the following command:
 
 ```
 python aft.py
+```
+
+#### Note for Windows Users
+
+You may notice the following output when passing the help flag:
+
+```
+python aft.py -h
+usage: aft.py [-h] [-d] [-p PATH]
+
+Search for and download mp3 files and their corresponding metadata.
+
+options:
+  -h, --help            show this help message and exit
+  -d, --downscale_image
+                        Downscale album art to 480 x 480 for display on small devices.
+  -p PATH, --path_to_ffmpeg PATH
+                        For Windows Users. Allows for the passing of the path to the ffmpeg excutable.
+```
+
+If Windows fails to point the program to the proper ffmpeg executable, then open the folder
+in which you installed mamba and make sure ffmpeg is. For example, assuming you installed mamba forge:
+
+```
+python aft.py -p 'C:\Users\<windows_username>\mambaforge\Library\bin\ffmpeg.exe'
+```
