@@ -19,7 +19,7 @@ from InquirerPy import prompt # type: ignore
 from InquirerPy.validator import EmptyInputValidator # type: ignore
 from io import BytesIO
 import music_tag # type: ignore
-from os import makedirs, name, system
+from os import getenv, makedirs, name, system
 from os.path import isdir, isfile
 from PIL import Image # type: ignore
 import requests
@@ -177,8 +177,7 @@ def get_audio_source_url(query_result: dict) -> str:
 
 def download_song(
     track_metadata: dict,
-    scale_image: bool,
-    ffmpeg_path: str =''
+    scale_image: bool
 ) -> None:
     '''
     TODO: Numpy-Style Documentation String
@@ -243,9 +242,11 @@ def download_song(
         }],
     }
 
-    # Windows-only fix.
+    # Windows-only fix. Make sure that install_patched_ffmpeg.bat is run first.
     if name == 'nt':
-        options['ffmpeg_location'] = ffmpeg_path
+        options['ffmpeg_location'] = (
+            f'{str(getenv("CONDA_PREFIX"))}\\Library\\bin\\ffmpeg.exe'
+        )
 
     with YoutubeDL(options) as youtube_downloader:
         youtube_downloader.download(audio_source_url)
@@ -297,22 +298,8 @@ if __name__ == '__main__':
         default=False,
         action='store_true'
     )
-    parser.add_argument(
-        '-p',
-        '--ffmpeg-location',
-        help=(
-            'For Windows Users. Allows for the passing of the path to the '
-            'ffmpeg excutable.'
-        ),
-        metavar='PATH',
-        dest='path_to_ffmpeg',
-        default='\0',
-        type=str,
-        nargs=1
-    )
     parsed_arguments: Namespace = parser.parse_args()
     downscale_art: bool = parsed_arguments.downscale_art
-    ffmpeg_path: str = parsed_arguments.path_to_ffmpeg[0]
 
     # Make my A.S.C.I.I. escape code work on Windows.
     system('')
@@ -579,10 +566,12 @@ if __name__ == '__main__':
                     )
 
                     try:
-                        download_song(entry, downscale_art, ffmpeg_path)
+                        download_song(entry, downscale_art)
                     except DownloadError:
                         progress_bar.pause()
                         sys.exit(0)
+                    except KeyboardInterrupt:
+                        print('Download Cancelled.')
 
                     progress_bar()
 

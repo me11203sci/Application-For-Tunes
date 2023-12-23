@@ -1,4 +1,4 @@
-name: aft_dev
+name: aft
 channels:
   - conda-forge
   - pypi
