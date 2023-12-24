@@ -1,5 +1,5 @@
+REM
 REM Make sure that when this is executed while the aft enviroment is active.
-
 @ echo off
 set MAMBA_PATH=%CONDA_PREFIX%\Library\bin
 echo "Downloading and unpacking patched ffmpeg..."
