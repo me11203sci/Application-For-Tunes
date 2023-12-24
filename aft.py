@@ -30,24 +30,6 @@ from yt_dlp import YoutubeDL # type: ignore
 from yt_dlp.utils import DownloadError # type: ignore
 
 
-class AudioSourceSelectInterrupt(Exception):
-    def __init__(self, discard_result: dict) -> None:
-        super().__init__()
-
-
-def raise_audio_select_interrupt(result) -> None:
-    '''
-    TODO: Numpy-Style Documentation String
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-    '''
-    raise AudioSourceSelectInterrupt(result)
-
-
 def format_song_results(data: list[dict]) -> list[str]:
     '''
     TODO: Numpy-Style Documentation String
@@ -134,7 +116,7 @@ def get_audio_source_url(query_result: dict) -> str:
             }[len(video_title) > 32]
             + {
                 0: f'{channel:<32}│',
-                1: f'{channel:<32}'[:28] + ' ... │'
+                1: f'{channel:<32}'[:27] + ' ... │'
             }[len(channel) > 32]
             + f'{link:<48}│'
         )
@@ -154,16 +136,12 @@ def get_audio_source_url(query_result: dict) -> str:
                 'amark' : '',
                 'pointer' : '>',
                 'show_cursor' : False,
-                'transformer' : raise_audio_select_interrupt,
                 'filter' :
                     lambda result:
                         formated_choices.index(result),
             },
             style={'answer' : '#ffffff'}
         )[0]
-    except AudioSourceSelectInterrupt:
-        sys.stdout.write('\033[2KAudio source selected.\r')
-        sys.stdout.flush()
 
     except KeyboardInterrupt:
         sys.stdout.write(
@@ -171,6 +149,12 @@ def get_audio_source_url(query_result: dict) -> str:
             'No audio source selected.\r'
         )
         return ''
+
+    sys.stdout.write(
+        '\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K\033[A\033[2K'
+        '\033[A\033[2KAudio source selected.\r'
+    )
+    sys.stdout.flush()
 
     return f'https://www.youtube.com/watch?v={query_result[index]["videoId"]}'
 
