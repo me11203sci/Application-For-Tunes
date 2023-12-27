@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 '''
 Application For Tunes - Python Implementation
 
@@ -12,7 +13,8 @@ Notes:
 '''
 from argparse import ArgumentParser, Namespace
 from alive_progress import alive_bar # type: ignore
-import eyed3 # type: ignore
+import eyed3
+from eyed3.id3 import headers # type: ignore
 from eyed3.id3.frames import ImageFrame # type: ignore
 from dotenv import dotenv_values, find_dotenv # type: ignore
 from InquirerPy import prompt # type: ignore
@@ -335,12 +337,12 @@ if __name__ == '__main__':
             'invalid?'
         )
 
-    query: str = ''
-    search_mode: str = ''
-    output_folder: str = './output/'
-
     # Main loop.
     while True:
+        query: str = ''
+        search_mode: str = ''
+        output_folder: str = './output/'
+
         try:
             query = str(
                 prompt(
@@ -505,9 +507,21 @@ if __name__ == '__main__':
                     # Query Spotify for the album trackslist.
                     album_query_response = requests.get(
                         f'https://api.spotify.com/v1/albums/'
-                        f'{selection[0]["id"]}/tracks',
+                        f'{selection[0]["id"]}/tracks?limit=50',
                         headers=authorization_header
                     ).json()
+
+                    # Loop until all tracks are received.
+                    next_url: str = album_query_response['next']
+                    while next_url != None:
+                        additional_tracks_response: dict = requests.get(
+                             next_url,
+                             headers=authorization_header
+                        ).json()
+                        album_query_response['items'].extend(
+                            additional_tracks_response['items']
+                        )
+                        next_url = additional_tracks_response['next']
 
                     # Parse relevant metadata per track.
                     tracks = [
