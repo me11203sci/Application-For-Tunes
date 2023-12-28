@@ -189,7 +189,7 @@ def download_song(
 
     # Special characters break later A.P.I. queries.
     character_encodings: dict = str.maketrans({
-        ' ' : '+',
+        ' ' : '%20',
         '$' : '%24',
         '#' : '%23',
         '&' : '%26',
@@ -200,7 +200,7 @@ def download_song(
 
     invidious_search_result: dict = requests.get(
         'https://vid.puffyan.us/api/v1/search/?q='
-        + '{0}+{1}+{2}'.format(
+        + '{0}%20{1}%20{2}'.format(
             song_name.replace('\'', '').translate(character_encodings),
             artist.replace('\'', '').translate(character_encodings),
             query.replace('\'', '').translate(character_encodings)
@@ -502,7 +502,10 @@ if __name__ == '__main__':
                         ).values()
                     )
 
-                    output_folder = f'./output/{selection[0]["album_title"]}/'
+                    output_folder = (
+                        f'./output/{selection[0]["artist"]}'
+                        f'/{selection[0]["album_title"]}/'
+                    )
 
                     # Query Spotify for the album trackslist.
                     album_query_response = requests.get(
